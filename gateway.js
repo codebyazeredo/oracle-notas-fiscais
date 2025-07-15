@@ -58,5 +58,21 @@ const validateQuery = [
     check('numeroNota').optional().isNumeric().withMessage('Número da nota fiscal deve ser numérico.'),
 ];
 
+let pool;
+async function initializePool() {
+    try {
+        pool = await oracledb.createPool({
+            user: process.env.ORACLE_USER,
+            password: process.env.ORACLE_PASSWORD,
+            connectString: process.env.ORACLE_CONNECT,
+            poolMin: 2,
+            poolMax: 10,
+            poolTimeout: 60
+        });
 
-
+        logger.info('Conexão com o banco de dados Oracle estabelecida com sucesso.');
+    } catch (err) {
+        logger.error(`Erro ao conectar ao banco de dados Oracle: ${err.message}`);
+        process.exit(1);
+    }
+}
