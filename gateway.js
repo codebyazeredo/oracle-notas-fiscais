@@ -145,3 +145,9 @@ app.get('/notas', validateQuery, async (req, res) => {
         }
     }
 });
+
+initializePool().then(() => {
+    app.listen(PORT, () => {
+        logger.info(`Servidor rodando na porta ${PORT}`);
+    });
+})
