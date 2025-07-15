@@ -76,3 +76,72 @@ async function initializePool() {
         process.exit(1);
     }
 }
+
+app.get('/notas', validateQuery, async (req, res) => {
+    const errors = validationResult(req);
+
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { codigo_nf, cnpj, numeroNota } = req.query;
+    let query = '';
+    let binds = {};
+    let connection;
+
+    if (codigo_nf) {
+        query = 'SELECT * FROM notas_fiscais WHERE codigo_nf = :codigo_nf';
+        binds = { codigo_nf };
+    } else if (cnpj && numeroNota) {
+        query = 'SELECT * FROM notas_fiscais WHERE cnpj = :cnpj AND numero_nota = :numeroNota';
+        binds = { cnpj, numeroNota};
+    } else {
+        return res.status(400).json({ error: 'Parâmetros inválidos. Use o código da NF ou cnpj e número da nota fiscal.' });
+    }
+
+    try {
+        logger.info(`Requisição recebida: /notas`, { query: req.query });
+        
+        connection = await pool.getConnection();
+
+        const result = await connection.execute(query, binds, {
+            outFormat: oracledb.OUT_FORMAT_OBJECT,
+            maxRows: 100
+        });
+
+        const filteredRows = result.rows.filter(row => ({
+            ID: row.ID,
+            CODIGO_NF: row.CODIGO_NF,
+            TIPO_NOTA: row.TIPO_NOTA,
+            CDFILIAL: row.CDFILIAL,
+            NRLANCTONF: row.NRLANCTONF,
+            FILIAL_RECEBIMENTO: row.FILIAL_RECEBIMENTO,
+            AF: row.AF,
+            CNPJ: row.CNPJ,
+            NOME_FORNECEDOR: row.NOME_FORNECEDOR,
+            NUMERO_NOTA: row.NUMERO_NOTA,
+            SERIE_NOTA: row.SERIE_NOTA,
+            DATA_EMISSAO: row.DATA_EMISSAO,
+            VALOR_TOTAL: row.VALOR_TOTAL,
+            PARCELA: row.PARCELA,
+            DATA_VENCIMENTO_ORIGINAL: row.DATA_VENCIMENTO_ORIGINAL,
+            VALOR_VENCIMENTO_ORIGINAL: row.VALOR_VENCIMENTO_ORIGINAL,
+            DATA_VENCIMENTO_ATUALIZADO: row.DATA_VENCIMENTO_ATUALIZADO,
+            VALOR_VENCIMENTO_ATUALIZADO: row.VALOR_VENCIMENTO_ATUALIZADO,
+        }));
+
+        logger.info(`Consulta Realizada [OK]: ${filteredRows.length} registros`); 
+        return res.json(filteredRows);   
+    } catch (err) {
+        logger.error(`Erro ao consultar notas fiscais: ${err.message}`, { query, binds });
+        return res.status(500).json({ error: 'Erro ao consultar notas fiscais.' });
+    } finally {
+        if (connection) {
+            try {
+                await connection.close();
+            } catch (err) {
+                logger.error(`Erro ao fechar conexão: ${err.message}`);
+            }
+        }
+    }
+});
