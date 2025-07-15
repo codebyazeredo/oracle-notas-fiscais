@@ -25,5 +25,32 @@ const logger = winston.createLogger({
     ]
 });
 
+app.use(helmet());
+app.use(cors());
+app.use(express.json());
+app.use(rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: 'Limite de requisições excedido, tente novamente mais tarde.'
+}));
+
+app.use((req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader.split(' ')[1];
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        logger.warn(`Tentativa de acesso sem token: ${req.ip}`);
+        return res.status(401).json({ error: 'Não autorizado.' });
+    }
+    
+    try {
+        jwt.verify(token, process.env.JWT_SECRET);
+        next();
+    } catch (err) {
+        logger.error(`Token inválido: ${err.message}`);
+        return res.status(401).json({ error: 'Token inválido.' });
+    }
+});
+
 
 
