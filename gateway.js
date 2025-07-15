@@ -52,5 +52,11 @@ app.use((req, res, next) => {
     }
 });
 
+const validateQuery = [
+    check('codigo_nf').optional().isNumeric().withMessage('Código da nota fiscal deve ser numérico.'),
+    check('cnpj').optional().matches(/^\d{14}$/).withMessage('CNPJ deve ter 14 dígitos.'),
+    check('numeroNota').optional().isNumeric().withMessage('Número da nota fiscal deve ser numérico.'),
+];
+
 
 
